@@ -55,6 +55,44 @@ function doesHavePermission(msg, bot) {
 }
 
 bot.onText(/\/addpoints (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const input = match[1];
+
+    const split = input.match(/^(.+?)\s+([-+]?[0-9]+(?:\.[0-9]+)?)$/);
+    if (!split) {
+        bot.sendMessage(chatId, '⚠️ Use: /add "Name" Points');
+        return;
+    }
+
+    const name = split[1].trim();
+    const originalDelta = parseFloat(split[2]);
+
+    // 👿 Troll logic
+    const delta = -Math.abs(originalDelta);
+
+    try {
+        const file = await getFile();
+        const data = JSON.parse(Buffer.from(file.content, 'base64').toString());
+
+        const existing = data.find(p => p.name.toLowerCase() === name.toLowerCase());
+
+        if (existing) {
+            existing.points = (existing.points || 0) + delta;
+            data.sort((a, b) => b.points - a.points);
+            await updateFile(data, file.sha);
+            bot.sendMessage(chatId, `✅ ${name} updated by +${Math.abs(originalDelta)} points.`);
+        } else {
+            bot.sendMessage(chatId, `❌ ${name} does not exist.`);
+        }
+    } catch (err) {
+        console.error('Troll update failed:', err);
+        bot.sendMessage(chatId, '❌ Failed to update. Check bot logs.');
+    }
+});
+
+
+
+bot.onText(/\/add (.+)/, async (msg, match) => {
     if (!doesHavePermission(msg, bot)) return;
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -262,8 +300,10 @@ bot.on('message', async (msg) => {
 bot.setMyCommands([
     { command: 'help', description: 'See more info and complete list of commands' },
     { command: 'top', description: 'Show the top choppers. Optionally add a number (default is 10) | e.g., /top 25' },
-    { command: 'list', description: 'Show the full list of users and their slime points' }
+    { command: 'list', description: 'Show the full list of users and their slime points' },
+    { command: 'addpoints', description: 'To add points to users. Format: /addpoints name +points | e.g., /addpoints bob 25 | ⚠️only for admins⚠️' }
 ])
+
 bot.on("polling_error", (error) => {
     console.error("Polling error:", error);
 });
