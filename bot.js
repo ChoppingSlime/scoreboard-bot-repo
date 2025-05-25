@@ -54,6 +54,59 @@ function doesHavePermission(msg, bot) {
     return true;
 }
 
+
+const { Octokit } = require("@octokit/rest");
+const octokit = new Octokit({ auth: GITHUB_TOKEN });
+
+async function logAddCommand({ user, name, delta }) {
+    const path = "logs.json"; // Or change to logs.txt if you prefer plain text
+    let logs = [];
+    let sha;
+
+    try {
+        const { data } = await octokit.repos.getContent({
+            owner: REPO_OWNER,
+            repo: REPO_NAME,
+            path,
+        });
+
+        const content = Buffer.from(data.content, 'base64').toString();
+        logs = content.trim() ? JSON.parse(content) : [];
+
+        sha = data.sha;
+    } catch (err) {
+        if (err.status === 404) {
+            // File does not exist yet, we'll create it
+            logs = [];
+        } else {
+            console.error("Failed to read log file:", err);
+            return;
+        }
+    }
+
+    const now = new Date();
+    const formattedDate = now.toLocaleString('en-GB', { timeZone: 'UTC' });
+
+    logs.push({
+        date: formattedDate,
+        user: user.username ? `@${user.username}` : `${user.first_name} ${user.last_name || ''}`.trim(),
+        name,
+        value: delta
+    });
+
+    const updatedContent = Buffer.from(JSON.stringify(logs, null, 2)).toString('base64');
+
+    await octokit.repos.createOrUpdateFileContents({
+        owner: REPO_OWNER,
+        repo: REPO_NAME,
+        path,
+        message: `log: ${user.username || user.first_name} used /add`,
+        content: updatedContent,
+        sha,
+    });
+}
+
+
 bot.onText(/\/addpoints (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const input = match[1];
@@ -80,6 +133,11 @@ bot.onText(/\/addpoints (.+)/, async (msg, match) => {
             existing.points = (existing.points || 0) + delta;
             data.sort((a, b) => b.points - a.points);
             await updateFile(data, file.sha);
+            await logAddCommand({
+                user: msg.from,
+                name,
+                delta
+            });
             bot.sendMessage(chatId, `✅ ${name} updated by +${Math.abs(originalDelta)} points.`);
         } else {
             bot.sendMessage(chatId, `❌ ${name} does not exist.`);
@@ -117,6 +175,7 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
             existing.points = (existing.points || 0) + delta;
             data.sort((a, b) => b.points - a.points);
             await updateFile(data, file.sha);
+            
             bot.sendMessage(chatId, `✅ ${name} updated by ${delta > 0 ? '+' : ''}${delta} points.`);
         } else {
             // Store pending confirmation

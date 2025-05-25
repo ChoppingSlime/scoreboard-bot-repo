@@ -1,15 +1,16 @@
 {
   "name": "scoreboard-bot",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "bot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node bot.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@octokit/rest": "^21.1.1",
     "dotenv": "^16.5.0",
     "node-fetch": "^2.7.0",
     "node-telegram-bot-api": "^0.66.0"
