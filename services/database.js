@@ -4,6 +4,8 @@ const path = require('path');
 const dbPath = path.resolve(__dirname, 'botdata.sqlite');
 const db = new sqlite3.Database(dbPath);
 
+
+
 db.serialize(() => {
   // Create users table if not exists
   db.run(`
@@ -19,6 +21,7 @@ db.serialize(() => {
     )
   `);
 });
+
 
 module.exports = {
   findUserByUsername: (username) => {
@@ -85,5 +88,21 @@ module.exports = {
         resolve(rows);
       });
     });
-  }
+    },
+    trackMessage: (userId, username) => {
+        return new Promise((resolve, reject) => {
+            const now = Date.now();
+            db.run(`
+        INSERT INTO users (user_id, username, message_count, join_date, last_message)
+        VALUES (?, ?, 1, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+          message_count = message_count + 1,
+          last_message = excluded.last_message,
+          username = excluded.username
+      `, [userId, username, now, now], function (err) {
+                if (err) return reject(err);
+                resolve();
+            });
+        });
+    }
 };

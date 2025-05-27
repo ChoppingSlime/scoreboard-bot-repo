@@ -6,7 +6,9 @@ const config = require('./config/config');
 const scoreboardCommands = require('./handlers/commands/scoreboard');
 const adminCommands = require('./handlers/commands/admin');
 const moderationCommands = require('./handlers/commands/moderation');
-const moderationService = require('./services/moderation');
+const moderationService = require('./services/moderation')
+const db = require('./services/database');
+console.log('db module keys:', Object.keys(db));
 
 const bot = new TelegramBot(config.TELEGRAM_TOKEN, { polling: true });
 
@@ -30,8 +32,14 @@ bot.on('message', async (msg) => {
     
     }
 
-// Track user message stats
-moderationService.trackMessage(userId, msg.from.username);
+    // Track user message stats
+    try {
+        await db.trackMessage(userId, msg.from.username);
+    } catch (e) {
+        console.error('Failed to track message:', e);
+    }
+    console.log('received a message');
+
 
 // Check if user is muted and delete message
 if (moderationService.isMuted(userId)) {
