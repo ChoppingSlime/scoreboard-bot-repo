@@ -1,6 +1,7 @@
 ﻿const db = require('../../services/database');
 const { isAdmin } = require('../../utils/helpers');
 
+
 module.exports = (bot) => {
     // 🔍 INFO COMMAND
     bot.onText(/[!\/]info(?:\s+@?(\w+))?/, async (msg, match) => {
@@ -184,4 +185,13 @@ module.exports = (bot) => {
             bot.sendMessage(chatId, '❌ Failed to get top chatters.');
         }
     });
+
+    async function trackMessage(userId, username) {
+        try {
+            await db.trackMessage(userId, username);
+        } catch (e) {
+            console.error('Failed to track message:', e);
+        }
+    }
+
 };
