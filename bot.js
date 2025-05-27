@@ -19,9 +19,14 @@ bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
 
     // Skip private chats and commands for tracking
-    if (msg.chat.type === 'private'  msg.text?.startsWith('/') || msg.text?.startsWith('!')) {
-    return;
-}
+    if (
+        msg.chat.type === 'private' ||
+        msg.text?.startsWith('/') ||
+        msg.text?.startsWith('!')
+    ) {
+        return;
+    
+    }
 
 // Track user message stats
 moderationService.trackMessage(userId, msg.from.username);
