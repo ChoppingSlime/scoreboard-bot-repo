@@ -8,7 +8,9 @@ class GitHubService {
 
     async getFile(filePath = config.FILE_PATH) {
         const res = await fetch(`https://api.github.com/repos/${config.REPO_OWNER}/${config.REPO_NAME}/contents/${filePath}`, {
-            headers: { Authorization: token ${ config.GITHUB_TOKEN } },
+            headers: {
+                Authorization: `token ${config.GITHUB_TOKEN}`
+            },
 });
 return await res.json();
     }
@@ -19,7 +21,7 @@ return await res.json();
     const res = await fetch(`https://api.github.com/repos/${config.REPO_OWNER}/${config.REPO_NAME}/contents/${filePath}`, {
         method: 'PUT',
         headers: {
-        Authorization: token ${ config.GITHUB_TOKEN },
+            Authorization: `token ${config.GITHUB_TOKEN}`,
         'Content-Type': 'application/json',
             },
 body: JSON.stringify({

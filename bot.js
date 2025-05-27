@@ -5,6 +5,7 @@ const config = require('./config/config');
 // Import handlers
 const scoreboardCommands = require('./handlers/commands/scoreboard');
 const adminCommands = require('./handlers/commands/admin');
+const moderationCommands = require('./handlers/commands/moderation');
 const moderationService = require('./services/moderation');
 
 const bot = new TelegramBot(config.TELEGRAM_TOKEN, { polling: true });
@@ -12,6 +13,7 @@ const bot = new TelegramBot(config.TELEGRAM_TOKEN, { polling: true });
 // Register command handlers
 scoreboardCommands(bot);
 adminCommands(bot);
+moderationCommands(bot);
 
 // Message tracking for moderation
 bot.on('message', async (msg) => {
@@ -55,9 +57,6 @@ bot.onText(/\/help/, (msg) => {
         helpText += '*!rename* old_name, new_name — Rename a user\n';
         helpText += '*!removeuser* name — Remove a user from the list\n\n';
     }
-
-    helpText += '🎭 **Fun Commands:**\n\n';
-    helpText += '*/addpoints* name points — "Add" points to users (wink wink)\n';
 
     bot.sendMessage(msg.chat.id, helpText, { parse_mode: 'Markdown' });
 });

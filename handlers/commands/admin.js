@@ -14,7 +14,7 @@ module.exports = (bot) => {
     };
 
     // /add command (real admin command)
-    bot.onText(/!add (.+)/, async (msg, match) => {
+    bot.onText(/\/add (.+)/, async (msg, match) => {
         if (!requireAdmin(msg)) return;
 
         const chatId = msg.chat.id;
@@ -54,7 +54,7 @@ module.exports = (bot) => {
 
 
     // /rename command
-    bot.onText(/!rename (.+), (.+)/, async (msg, match) => {
+    bot.onText(/\/rename (.+), (.+)/, async (msg, match) => {
         if (!requireAdmin(msg)) return;
 
         const chatId = msg.chat.id;
@@ -87,7 +87,7 @@ module.exports = (bot) => {
     });
 
     // /removeuser command
-    bot.onText(/!removeuser (.+)/, async (msg, match) => {
+    bot.onText(/\/removeuser (.+)/, async (msg, match) => {
         if (!requireAdmin(msg)) return;
 
         const chatId = msg.chat.id;
