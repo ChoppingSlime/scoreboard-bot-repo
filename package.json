@@ -1,18 +1,24 @@
 {
-  "name": "scoreboard-bot",
-  "version": "1.0.0",
-  "main": "bot.js",
-  "scripts": {
-    "start": "node bot.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "@octokit/rest": "^21.1.1",
-    "dotenv": "^16.5.0",
-    "node-fetch": "^2.7.0",
-    "node-telegram-bot-api": "^0.66.0"
-  }
+    "name": "scoreboard-bot",
+    "version": "1.0.0",
+    "description": "Telegram bot for SlimePoints scoreboard and group moderation",
+    "main": "bot.js",
+    "scripts": {
+        "start": "node bot.js",
+        "dev": "nodemon bot.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@octokit/rest": "^21.1.1",
+        "dotenv": "^16.5.0",
+        "node-fetch": "^2.7.0",
+        "node-telegram-bot-api": "^0.66.0"
+    },
+    "devDependencies": {
+        "eslint": "^9.27.0",
+        "nodemon": "^3.0.0"
+    }
 }
+
