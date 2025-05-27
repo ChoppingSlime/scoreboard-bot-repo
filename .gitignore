@@ -1,4 +1,6 @@
 .env
 .vs
+
 node_modules
 package-lock.json
+services/botdata.sqlite

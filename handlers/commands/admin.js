@@ -7,7 +7,7 @@ module.exports = (bot) => {
     // Permission check middleware
     const requireAdmin = (msg, callback) => {
         if (!helpers.isAdmin(msg.from.id)) {
-            bot.sendMessage(msg.chat.id, "❌ You don't have permission to use this command.");
+            bot.sendMessage(msg.chat.id, "❌ Non hai i permessi per usare questo comando.");
             return false;
         }
         return true;
@@ -23,7 +23,7 @@ module.exports = (bot) => {
 
         const parsed = helpers.parsePointsCommand(input);
         if (!parsed) {
-            bot.sendMessage(chatId, '⚠️ Use: /add "Name" +/-Points');
+            bot.sendMessage(chatId, '⚠️ Usa: /add "Nome" +/-Punti');
             return;
         }
 
@@ -40,15 +40,15 @@ module.exports = (bot) => {
                 await githubService.updateFile(data, sha);
                 await githubService.logCommand({ user: msg.from, name, delta });
 
-                bot.sendMessage(chatId, `✅ ${name} updated by ${delta > 0 ? '+' : ''}${delta} points.`);
+                bot.sendMessage(chatId, `✅ ${name} aumentato di ${delta > 0 ? '+' : ''}${delta} punti.`);
             } else {
                 // Store pending confirmation
                 pendingConfirmations.set(userId, { name, delta, sha, data });
-                bot.sendMessage(chatId, `⚠️ ${name} does not exist. Create new entry with ${delta} points? Reply with "yes" or "no".`);
+                bot.sendMessage(chatId, `⚠️ ${name} non esiste. Vuoi creare un nuovo utente con ${delta} punti? Rispondi con "!SI" o "!NO".`);
             }
         } catch (err) {
             console.error('Update failed:', err);
-            bot.sendMessage(chatId, '❌ Failed to update. Check bot logs.');
+            bot.sendMessage(chatId, '❌ Errore. @ChoppingSlime controlla i logs.');
         }
     });
 
@@ -66,23 +66,23 @@ module.exports = (bot) => {
 
             const oldEntryIndex = data.findIndex(e => e.name.toLowerCase() === oldName.toLowerCase());
             if (oldEntryIndex === -1) {
-                bot.sendMessage(chatId, `❌ User "${oldName}" not found.`);
+                bot.sendMessage(chatId, `❌ L'utente' "${oldName}" non ha ancora inviato nessun messaggio, pertanto è assente dal mio slime-database.`);
                 return;
             }
 
             const newNameExists = data.some(e => e.name.toLowerCase() === newName.toLowerCase());
             if (newNameExists) {
-                bot.sendMessage(chatId, `❌ Name "${newName}" is already taken.`);
+                bot.sendMessage(chatId, `❌ Il nome utente "${newName}" è gia in uso.`);
                 return;
             }
 
             data[oldEntryIndex].name = newName;
             await githubService.updateFile(data, sha, undefined, `Renamed ${oldName} to ${newName}`);
 
-            bot.sendMessage(chatId, `✅ Renamed "${oldName}" to "${newName}".`);
+            bot.sendMessage(chatId, `✅ Nome utente cambiato da "${oldName}" a "${newName}".`);
         } catch (err) {
             console.error('Rename failed:', err);
-            bot.sendMessage(chatId, '❌ Failed to rename user.');
+            bot.sendMessage(chatId, '❌ Errore. @ChoppingSlime controlla i logs.');
         }
     });
 
@@ -98,16 +98,16 @@ module.exports = (bot) => {
 
             const index = data.findIndex(e => e.name.toLowerCase() === name.toLowerCase());
             if (index === -1) {
-                bot.sendMessage(chatId, `❌ User "${name}" not found.`);
+                bot.sendMessage(chatId, `❌ Utente "${name}" non trovato.`);
                 return;
             }
             data.splice(index, 1);
             await githubService.updateFile(data, sha, undefined, `Removed user ${name}`);
 
-            bot.sendMessage(chatId, `✅ Deleted user "${name}".`);
+            bot.sendMessage(chatId, `✅ Utente "${name}" rimosso dalla lista.`);
         } catch (err) {
             console.error('Delete failed:', err);
-            bot.sendMessage(chatId, '❌ Failed to delete user.');
+            bot.sendMessage(chatId, '❌ Errore. @ChoppingSlime controlla i logs.');
         }
     });
 
@@ -121,20 +121,20 @@ module.exports = (bot) => {
 
         const { name, delta, sha, data } = pendingConfirmations.get(userId);
 
-        if (text === 'yes') {
+        if (text === '!SI') {
             data.push({ name, points: delta });
             data.sort((a, b) => b.points - a.points);
             try {
                 await githubService.updateFile(data, sha);
-                await bot.sendMessage(chatId, `✅ New entry created: ${name} with ${delta} points.`);
+                await bot.sendMessage(chatId, `✅ Creato nuovo utente: ${name} con ${delta} punti.`);
             } catch (err) {
                 console.error('Update failed:', err);
-                bot.sendMessage(chatId, '❌ Failed to create entry.');
+                bot.sendMessage(chatId, '❌ Errore. @ChoppingSlime controlla i logs.');
             }
-        } else if (text === 'no') {
+        } else if (text === '!NO') {
             bot.sendMessage(chatId, '❌ Update canceled.');
         } else {
-            bot.sendMessage(chatId, '⚠️ Please reply with "yes" or "no".');
+            bot.sendMessage(chatId, '⚠️ Rispondi con "!SI" o "!NO".');
             return;
         }
 

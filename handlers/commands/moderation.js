@@ -3,16 +3,21 @@ const { isAdmin } = require('../../utils/helpers');
 
 
 module.exports = (bot) => {
+
+    function escapeMarkdownV2(text) {
+        return text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+    }
+ 
+
     // 🔍 INFO COMMAND
     bot.onText(/[!\/]info(?:\s+@?(\w+))?/, async (msg, match) => {
         const chatId = msg.chat.id;
         const targetUsername = match[1];
 
         if (!targetUsername) {
-            bot.sendMessage(chatId, `❌ User @${targetUsername} not found in records.`);
+            bot.sendMessage(chatId, `❌ L'utente @${targetUsername} non ha ancora inviato nessun messaggio, pertanto è assente dal mio slime-database.`);
             return;
         }
-
         try {
             const user = await db.findUserByUsername(targetUsername);
 
@@ -21,15 +26,16 @@ module.exports = (bot) => {
                 return;
             }
 
-            const infoText = `📋 **User Info for @${targetUsername}:**\n\n` +
+            const safeUsername = escapeMarkdownV2(targetUsername);
+
+            const infoText = `📋 *User Info for @${safeUsername}:*\n\n` +
                 `💬 Messages sent: ${user.message_count}\n` +
                 `⚠️ Warnings: ${user.warnings}\n` +
                 `📅 First seen: ${user.join_date ? new Date(user.join_date).toLocaleDateString() : 'Unknown'}\n` +
                 `🕐 Last message: ${user.last_message ? new Date(user.last_message).toLocaleString() : 'Never'}\n` +
                 `🔇 Currently muted: ${user.is_muted ? 'Yes' : 'No'}`;
 
-
-            bot.sendMessage(chatId, infoText, { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, infoText, { parse_mode: 'MarkdownV2' });
         } catch (err) {
             console.error('Info command failed:', err);
             bot.sendMessage(chatId, '❌ Failed to get user info.');
@@ -50,7 +56,7 @@ module.exports = (bot) => {
         try {
             const user = await db.findUserByUsername(targetUsername);
             if (!user) {
-                bot.sendMessage(chatId, `❌ User @${targetUsername} not found.`);
+                bot.sendMessage(chatId, `❌ L'utente @${targetUsername} non ha ancora inviato nessun messaggio, pertanto è assente dal mio slime-database.`);
                 return;
             }
 
@@ -97,7 +103,7 @@ module.exports = (bot) => {
         try {
             const user = await db.findUserByUsername(targetUsername);
             if (!user) {
-                bot.sendMessage(chatId, `❌ User @${targetUsername} not found.`);
+                bot.sendMessage(chatId, `❌ L'utente @${targetUsername} non ha ancora inviato nessun messaggio, pertanto è assente dal mio slime-database.`);
                 return;
             }
 
@@ -128,7 +134,7 @@ module.exports = (bot) => {
         try {
             const user = await db.findUserByUsername(targetUsername);
             if (!user) {
-                bot.sendMessage(chatId, `❌ User @${targetUsername} not found.`);
+                bot.sendMessage(chatId, `❌ L'utente @${targetUsername} non ha ancora inviato nessun messaggio, pertanto è assente dal mio slime-database.`);
                 return;
             }
 
@@ -186,12 +192,6 @@ module.exports = (bot) => {
         }
     });
 
-    async function trackMessage(userId, username) {
-        try {
-            await db.trackMessage(userId, username);
-        } catch (e) {
-            console.error('Failed to track message:', e);
-        }
-    }
+    
 
 };
