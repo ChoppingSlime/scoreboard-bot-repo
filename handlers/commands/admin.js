@@ -44,7 +44,7 @@ module.exports = (bot) => {
             } else {
                 // Store pending confirmation
                 pendingConfirmations.set(userId, { name, delta, sha, data });
-                bot.sendMessage(chatId, `⚠️ ${name} non esiste. Vuoi creare un nuovo utente con ${delta} punti? Rispondi con "!SI" o "!NO".`);
+                bot.sendMessage(chatId, `⚠️ ${name} non esiste. Vuoi creare un nuovo utente con ${delta} punti? Rispondi con "SI" o "NO".`);
             }
         } catch (err) {
             console.error('Update failed:', err);
@@ -117,11 +117,13 @@ module.exports = (bot) => {
         const userId = msg.from.id;
         const text = msg.text?.toLowerCase();
 
-        if (!pendingConfirmations.has(userId) || msg.chat.type !== 'private') return;
+        if (msg.from.is_bot) return;
+
+        if (!pendingConfirmations.has(userId)) return;
 
         const { name, delta, sha, data } = pendingConfirmations.get(userId);
 
-        if (text === '!SI') {
+        if (text === 'si') {
             data.push({ name, points: delta });
             data.sort((a, b) => b.points - a.points);
             try {
@@ -131,10 +133,10 @@ module.exports = (bot) => {
                 console.error('Update failed:', err);
                 bot.sendMessage(chatId, '❌ Errore. @ChoppingSlime controlla i logs.');
             }
-        } else if (text === '!NO') {
+        } else if (text === 'no') {
             bot.sendMessage(chatId, '❌ Update canceled.');
         } else {
-            bot.sendMessage(chatId, '⚠️ Rispondi con "!SI" o "!NO".');
+            bot.sendMessage(chatId, '⚠️ Rispondi con "SI" o "NO". ');
             return;
         }
 

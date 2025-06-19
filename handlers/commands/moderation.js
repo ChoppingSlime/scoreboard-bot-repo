@@ -1,4 +1,5 @@
 ﻿const db = require('../../services/database');
+const helpers = require('../../utils/helpers');
 const { isAdmin } = require('../../utils/helpers');
 
 
@@ -43,45 +44,68 @@ module.exports = (bot) => {
     });
 
     // ⚠️ WARN COMMAND
-    bot.onText(/[!\/]warn\s+@?(\w+)(?:\s+(.+))?/, async (msg, match) => {
-        if (!isAdmin(msg.from.id)) {
-            bot.sendMessage(msg.chat.id, "❌ You don't have permission to use this command.");
+bot.onText(/[!\/]warn\s+@?(\w+)(?:\s+(.+))?/, async (msg, match) => {
+    if (!isAdmin(msg.from.id)) {
+        bot.sendMessage(msg.chat.id, "❌ Non hai i permessi per usare questo comando.");
+        return;
+    }
+
+    const chatId = msg.chat.id;
+    const targetUsername = match[1];
+    const reason = match[2] || 'Non hai specificato un motivo per il warn';
+
+    try {
+        const user = await db.findUserByUsername(targetUsername);
+        if (!user) {
+            bot.sendMessage(chatId, `❌ L'utente @${targetUsername} non ha ancora inviato nessun messaggio, pertanto è assente dal mio slime-database.`);
             return;
         }
 
-        const chatId = msg.chat.id;
-        const targetUsername = match[1];
-        const reason = match[2] || 'No reason provided';
+        const updatedUser = await db.addWarning(user.user_id, reason, msg.from.id);
 
-        try {
-            const user = await db.findUserByUsername(targetUsername);
-            if (!user) {
-                bot.sendMessage(chatId, `❌ L'utente @${targetUsername} non ha ancora inviato nessun messaggio, pertanto è assente dal mio slime-database.`);
-                return;
-            }
+        const warnText = `⚠️ **L'utente @${targetUsername} è stato warnato**\n\n` +
+            `**Motivo:** ${reason}\n` +
+            `**Numero di warn:** ${updatedUser.warnings}\n\n` +
+            `${updatedUser.warnings >= 3 ? '🚨 **User has reached warning limit!**' : ''}`;
 
-            const updatedUser = await db.addWarning(user.user_id, reason, msg.from.id);
+        bot.sendMessage(chatId, warnText, { parse_mode: 'Markdown' });
 
-            const warnText = `⚠️ **Warning issued to @${targetUsername}**\n\n` +
-                `**Reason:** ${reason}\n` +
-                `**Total warnings:** ${updatedUser.warnings}\n\n` +
-                `${updatedUser.warnings >= 3 ? '🚨 **User has reached warning limit!**' : ''}`;
+        // Auto-mute after 3 warnings
+        if (updatedUser.warnings >= 3) {
+            const muteDurationMs = 24 * 60 * 60 * 1000; // 1 day
+            const muteUntil = new Date(Date.now() + muteDurationMs);
+            const muteUntilTimestamp = Math.floor(muteUntil.getTime() / 1000); // seconds
 
-            bot.sendMessage(chatId, warnText, { parse_mode: 'Markdown' });
+            // Mute user on Telegram
+            await bot.restrictChatMember(chatId, user.user_id, {
+                permissions: {
+                    can_send_messages: false,
+                    can_send_media_messages: false,
+                    can_send_polls: false,
+                    can_send_other_messages: false,
+                    can_add_web_page_previews: false,
+                    can_change_info: false,
+                    can_invite_users: false,
+                    can_pin_messages: false,
+                },
+                until_date: muteUntilTimestamp,
+            });
+            // Reset warns to 0 in DB
+            await db.resetWarnings(user.user_id);
 
-            // Auto-mute after 3 warnings
-            if (updatedUser.warnings >= 3) {
-                const muteUntil = new Date(Date.now() + (60 * 60 * 1000)); // 1 hour
-                await db.muteUser(user.user_id, muteUntil);
-                bot.sendMessage(chatId, `🔇 @${targetUsername} has been automatically muted for 1 hour due to excessive warnings.`);
-            }
-        } catch (err) {
-            console.error('Warn command failed:', err);
-            bot.sendMessage(chatId, '❌ Failed to warn user.');
+            // Save mute info in DB
+            await db.muteUser(user.user_id, muteUntil);
+
+            bot.sendMessage(chatId, `🔇 @${targetUsername} è stato mutato automaticamente per 1 giorno, causa 3 warn.\n` +
+                `⏰ Il mute scadrà il: ${muteUntil.toLocaleString()}`);
         }
-    });
+    } catch (err) {
+        console.error('Warn command failed:', err);
+        bot.sendMessage(chatId, '❌ Failed to warn user.');
+    }
+});
 
-    // 🔇 MUTE COMMAND
+    // ⚠️ MUTE COMMAND
     bot.onText(/[!\/]mute\s+@?(\w+)(?:\s+(\d+)([mhd]))?/, async (msg, match) => {
         if (!isAdmin(msg.from.id)) {
             bot.sendMessage(msg.chat.id, "❌ You don't have permission to use this command.");
@@ -90,6 +114,11 @@ module.exports = (bot) => {
 
         const chatId = msg.chat.id;
         const targetUsername = match[1];
+        if (!targetUsername) {
+            bot.sendMessage(chatId, "❌ Please specify a username.");
+            return;
+        }
+
         const duration = parseInt(match[2]) || 60;
         const unit = match[3] || 'm';
 
@@ -103,25 +132,41 @@ module.exports = (bot) => {
         try {
             const user = await db.findUserByUsername(targetUsername);
             if (!user) {
-                bot.sendMessage(chatId, `❌ L'utente @${targetUsername} non ha ancora inviato nessun messaggio, pertanto è assente dal mio slime-database.`);
+                bot.sendMessage(chatId, `❌ User @${targetUsername} not found in the database.`);
                 return;
             }
 
             const muteUntil = new Date(Date.now() + muteTime);
-            await db.muteUser(user.user_id, muteUntil);
+            const muteUntilTimestamp = Math.floor(muteUntil.getTime() / 1000);
 
-            const muteText = `🔇 **@${targetUsername} has been muted**\n\n` +
-                `**Duration:** ${duration}${unit}\n` +
-                `**Unmute time:** ${muteUntil.toLocaleString()}`;
+            await bot.restrictChatMember(chatId, user.user_id, {
+                permissions: {
+                    can_send_messages: false,
+                    can_send_media_messages: false,
+                    can_send_polls: false,
+                    can_send_other_messages: false,
+                    can_add_web_page_previews: false,
+                    can_change_info: false,
+                    can_invite_users: false,
+                    can_pin_messages: false,
+                },
+                until_date: muteUntilTimestamp,
+            });
+
+            await db.muteUser(user.user_id, muteUntil); // store mute info
+
+            const muteText = `🔇 **@${targetUsername} è stato mutato**\n\n` +
+                `**Durata:** ${duration}${unit}\n` +
+                `**Il mute scadrà il:** ${muteUntil.toLocaleString()}`;
 
             bot.sendMessage(chatId, muteText, { parse_mode: 'Markdown' });
         } catch (err) {
             console.error('Mute command failed:', err);
-            bot.sendMessage(chatId, '❌ Failed to mute user.');
+            bot.sendMessage(chatId, `❌ Failed to mute @${targetUsername}. They might be an admin or I lack permissions.`);
         }
     });
 
-    // 🔊 UNMUTE COMMAND
+    // ⚠️ UNMUTE COMMAND
     bot.onText(/[!\/]unmute\s+@?(\w+)/, async (msg, match) => {
         if (!isAdmin(msg.from.id)) {
             bot.sendMessage(msg.chat.id, "❌ You don't have permission to use this command.");
@@ -130,68 +175,102 @@ module.exports = (bot) => {
 
         const chatId = msg.chat.id;
         const targetUsername = match[1];
+        if (!targetUsername) {
+            bot.sendMessage(chatId, "❌ Please specify a username.");
+            return;
+        }
 
         try {
             const user = await db.findUserByUsername(targetUsername);
             if (!user) {
-                bot.sendMessage(chatId, `❌ L'utente @${targetUsername} non ha ancora inviato nessun messaggio, pertanto è assente dal mio slime-database.`);
+                bot.sendMessage(chatId, `❌ User @${targetUsername} not found in the database.`);
                 return;
             }
 
-            await db.unmuteUser(user.user_id);
-            bot.sendMessage(chatId, `🔊 @${targetUsername} has been unmuted.`);
-        } catch (err) {
-            console.error('Unmute command failed:', err);
-            bot.sendMessage(chatId, '❌ Failed to unmute user.');
-        }
-    });
-
-    // 📊 STATS COMMAND
-    bot.onText(/[!\/]stats/, async (msg) => {
-        const chatId = msg.chat.id;
-
-        try {
-            const stats = await db.getChatStats();
-
-            const statsText = `📊 **Chat Statistics:**\n\n` +
-                `👤 Active users: ${stats.total_users}\n` +
-                `💬 Total messages tracked: ${stats.total_messages}\n` +
-                `🔇 Currently muted: ${stats.muted_users}\n` +
-                `⚠️ Total warnings issued: ${stats.total_warnings}`;
-
-            bot.sendMessage(chatId, statsText, { parse_mode: 'Markdown' });
-        } catch (err) {
-            console.error('Stats command failed:', err);
-            bot.sendMessage(chatId, '❌ Failed to get chat statistics.');
-        }
-    });
-
-    // 🏆 TOP CHATTERS COMMAND
-    bot.onText(/[!\/]topchatters(?:\s+(\d+))?/, async (msg, match) => {
-        const chatId = msg.chat.id;
-        const limit = match[1] ? parseInt(match[1]) : 10;
-
-        try {
-            const topUsers = await db.getTopMessageSenders(limit);
-
-            if (topUsers.length === 0) {
-                bot.sendMessage(chatId, 'No message data available yet.');
-                return;
-            }
-
-            let leaderboardText = `🏆 **Top ${limit} Most Active Chatters:**\n\n`;
-            topUsers.forEach((user, index) => {
-                const displayName = user.username ? `@${user.username}` : (user.first_name || 'Unknown');
-                leaderboardText += `${index + 1}. ${displayName}: ${user.message_count} messages\n`;
+            await bot.restrictChatMember(chatId, user.user_id, {
+                permissions: {
+                    can_send_messages: true,
+                    can_send_media_messages: true,
+                    can_send_polls: false,
+                    can_send_other_messages: true,
+                    can_add_web_page_previews: true,
+                    can_change_info: false,    // Usually false for regular members
+                    can_invite_users: false,
+                    can_pin_messages: false,
+                },
+                until_date: 0, // removes restrictions immediately
             });
 
-            bot.sendMessage(chatId, leaderboardText, { parse_mode: 'Markdown' });
+            await db.unmuteUser(user.user_id);
+
+            bot.sendMessage(chatId, `🔊 @${targetUsername} è stato smutato.`);
         } catch (err) {
-            console.error('Top chatters command failed:', err);
-            bot.sendMessage(chatId, '❌ Failed to get top chatters.');
+            console.error('Unmute command failed:', err);
+            bot.sendMessage(chatId, `❌ Failed to unmute @${targetUsername}.`);
         }
     });
 
-    
+    // 🚫 PERMABAN COMMAND
+    bot.onText(/[!\/]ban\s+@?(\w+)/, async (msg, match) => {
+        if (!isAdmin(msg.from.id)) {
+            bot.sendMessage(msg.chat.id, "❌ You don't have permission to use this command.");
+            return;
+        }
 
+        const chatId = msg.chat.id;
+        const targetUsername = match[1];
+
+        if (!targetUsername) {
+            bot.sendMessage(chatId, "❌ Please specify a username to ban.");
+            return;
+        }
+
+        try {
+            const user = await db.findUserByUsername(targetUsername);
+            if (!user) {
+                bot.sendMessage(chatId, `❌ User @${targetUsername} not found in the database.`);
+                return;
+            }
+
+            await bot.banChatMember(chatId, user.user_id); // perma ban
+
+            bot.sendMessage(chatId, `🚫 User @${targetUsername} has been permanently banned.`);
+        } catch (err) {
+            console.error('Ban command failed:', err);
+            bot.sendMessage(chatId, `❌ Failed to ban @${targetUsername}. They might be an admin or I lack permissions.`);
+        }
+    });
+
+    // ✅ UNBAN COMMAND
+    bot.onText(/[!\/]unban\s+@?(\w+)/, async (msg, match) => {
+        if (!isAdmin(msg.from.id)) {
+            bot.sendMessage(msg.chat.id, "❌ You don't have permission to use this command.");
+            return;
+        }
+
+        const chatId = msg.chat.id;
+        const targetUsername = match[1];
+
+        if (!targetUsername) {
+            bot.sendMessage(chatId, "❌ Please specify a username to unban.");
+            return;
+        }
+
+        try {
+            const user = await db.findUserByUsername(targetUsername);
+            if (!user) {
+                bot.sendMessage(chatId, `❌ User @${targetUsername} not found in the database.`);
+                return;
+            }
+
+            await bot.unbanChatMember(chatId, user.user_id);
+
+            bot.sendMessage(chatId, `✅ User @${targetUsername} has been unbanned.`);
+        } catch (err) {
+            console.error('Unban command failed:', err);
+            bot.sendMessage(chatId, `❌ Failed to unban @${targetUsername}.`);
+        }
+    });
+
+     
 };
