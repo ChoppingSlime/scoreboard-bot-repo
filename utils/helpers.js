@@ -9,6 +9,45 @@ class Helpers {
         return userId === config.OWNER_ID;
     }
 
+
+
+
+    static specifyUsername(bot, chatId) {
+        return this.sendReply(bot, chatId, "❌ Per favore specifica il nome utente.");
+    }
+
+    static userNotFound(bot, chatId, targetUsername) {
+        return this.sendReply(bot, chatId, `❌ Utente @${targetUsername} non ha ancora inviato nessun messaggio.`);
+    }
+
+    static userBanned(bot, chatId, targetUsername) {
+        return this.sendReply(bot, chatId, `🚫 L'utente @${targetUsername} è stato bannato.`);
+    }
+
+    static userUnbanned(bot, chatId, targetUsername) {
+        return this.sendReply(bot, chatId, `✅ L'utente @${targetUsername} è stato sbannato.`);
+    }
+
+    static userUnmuted(bot, chatId, targetUsername) {
+        return this.sendReply(bot, chatId, `🔈 **@${targetUsername} è stato smutato.**`);
+    }
+
+    static userMuted(bot, chatId, targetUsername, duration, unit, muteUntil) {
+        const muteText = `🔇 **@${targetUsername} è stato mutato**\n\n` +
+            `**Durata:** ${duration}${unit}\n` +
+            `**⏰ Il mute scadrà il:** ${muteUntil.toLocaleString()}`;
+        return this.sendReply(bot, chatId, muteText);
+    }
+
+    static warnMuteMessage(bot, chatId, warnText, setsOfThree, muteUntil) {
+        warnText += `\n\n🔇 Ha raggiunto ${setsOfThree * 3} warn: è stato mutato per ${setsOfThree} giorno${setsOfThree > 1 ? 'i' : ''}.\n` +
+            `⏰ Il mute scadrà il: ${muteUntil.toLocaleString()}`;
+        return this.sendReply(bot, chatId, warnText);
+    }
+
+
+
+
     static formatLeaderboard(data, limit = 10, title = "Top Choppers") {
         if (data.length === 0) {
             return 'Leaderboard is empty.';
