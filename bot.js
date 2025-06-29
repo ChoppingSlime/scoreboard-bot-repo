@@ -5,17 +5,14 @@ const config = require('./config/config');
 // Import handlers
 const scoreboardCommands = require('./handlers/commands/scoreboard');
 const adminCommands = require('./handlers/commands/admin');
-const moderationCommands = require('./handlers/commands/moderation');
-const moderationService = require('./services/moderation')
-const db = require('./services/database');
-console.log('db module keys:', Object.keys(db));
+
 
 const bot = new TelegramBot(config.TELEGRAM_TOKEN, { polling: true });
 
 // Register command handlers
 scoreboardCommands(bot);
 adminCommands(bot);
-moderationCommands(bot);
+
 
 // Message tracking for moderation
 bot.on('message', async (msg) => {
@@ -29,26 +26,8 @@ bot.on('message', async (msg) => {
         msg.text?.startsWith('!')
     ) {
         return;
-    
-    }
 
-    // Track user message stats
-    try {
-        await db.trackMessage(userId, msg.from.username);
-    } catch (e) {
-        console.error('Failed to track message:', e);
     }
-    console.log('received a message');
-
-
-// Check if user is muted and delete message
-if (moderationService.isMuted(userId)) {
-    try {
-        await bot.deleteMessage(chatId, msg.message_id);
-    } catch (err) {
-        console.log('Failed to delete message from muted user:', err.message);
-    }
-}
 });
 
 // /help command
